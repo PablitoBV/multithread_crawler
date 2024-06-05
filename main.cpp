@@ -16,7 +16,7 @@ std::mutex outputMutex;
 BaseHashSet visitedLinks(100); // Initialize the striped hash set with a capacity
 std::atomic<int> processedLinksCount(0);
 
-const int maxLinksToProcess = 100;
+int maxLinksToProcess = 100;
 
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
     size_t newLength = size * nmemb;
@@ -37,8 +37,9 @@ void extractLinks(const GumboNode* node, std::vector<std::string>& links) {
         GumboAttribute* href = gumbo_get_attribute(&node->v.element.attributes, "href");
         if (href) {
             std::string link = href->value;
-            if (link.find("https://") == 0) {
+            if (link.find("https://") == 0 && link.find("wikipedia") != std::string::npos) {
                 links.push_back(link);
+                std::cout << "Extracted link: " << link << std::endl; // Debug print
             }
         }
     }
@@ -59,18 +60,19 @@ void downloadAndExtract(const std::string& url, std::vector<std::string>& links,
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L); // Set timeout to 10 seconds
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
 
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        } else {
+        if (res == CURLE_OK) {
             html = readBuffer;
             GumboOutput* output = gumbo_parse(readBuffer.c_str());
             if (output != nullptr) {
                 extractLinks(output->root, links);
                 gumbo_destroy_output(&kGumboDefaultOptions, output);
             }
+        } else {
+            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << " for URL: " << url << std::endl;
         }
     }
 }
@@ -82,45 +84,23 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
         }
 
         std::string url = queue.pop();
-        if (url.empty())
+        if (url.empty()) {
             break;
+        }
 
         std::vector<std::string> links;
         std::string html;
+
+        std::cout << "Processing URL: " << url << std::endl; // Debug print
 
         downloadAndExtract(url, links, html);
 
         {
             std::lock_guard<std::mutex> lock(outputMutex);
-            // Save the HTML content to html.txt
-            /*
-            std::ofstream htmlFile("html.txt", std::ios::app);
-            if (htmlFile.is_open()) {
-                htmlFile << "URL: " << url << "\n";
-                htmlFile << html << "\n\n";
-                htmlFile.close();
-                std::cout << "HTML content has been saved to html.txt" << std::endl;
-            } else {
-                std::cerr << "Unable to open file html.txt for writing" << std::endl;
-            }
-            */
-
-            // Save the extracted links to links.txt
-            /*
-            std::ofstream outFile("links.txt", std::ios::app);
-            if (outFile.is_open()) {
-                for (const auto& link : links) {
-                    outFile << link << std::endl;
-                }
-                outFile.close();
-                std::cout << "Links have been saved to links.txt" << std::endl;
-            } else {
-                std::cerr << "Unable to open file links.txt for writing" << std::endl;
-            }
-            */
         }
 
         processedLinksCount++;
+        std::cout << "Processed links count: " << processedLinksCount.load() << std::endl; // Debug print
 
         for (const auto& link : links) {
             if (processedLinksCount >= maxLinksToProcess) {
@@ -128,19 +108,27 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
             }
 
             std::lock_guard<std::mutex> lock(outputMutex);
-            if (!visitedLinks.contains(Website(link))) {
+            if (!visitedLinks.contains(Website(link)) && !link.empty()) {
                 visitedLinks.add(Website(link));
                 queue.push(link);
+                std::cout << "Added to queue: " << link << std::endl; // Debug print
             }
         }
     }
 }
 
-int main() {
-    const int numThreads = 12;
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        std::cerr << "Usage: " << argv[0] << " <NUMBER_OF_THREADS> <MAX_LINKS_TO_PROCESS>" << std::endl;
+        return 1;
+    }
+
+    int numThreads = std::stoi(argv[1]);
+    maxLinksToProcess = std::stoi(argv[2]);
+
     ConcurrentQueue<std::string> queue;
 
-    std::string initialUrl = "https://balls.com/"; // Replace with the desired initial URL
+    std::string initialUrl = "https://en.wikipedia.org/wiki/Main_Page"; // Replace with the desired initial URL
     visitedLinks.add(Website(initialUrl));
     queue.push(initialUrl);
 
@@ -157,5 +145,8 @@ int main() {
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken with " << numThreads << " threads: " << elapsed.count() << " seconds" << std::endl;
 
+    // Print all websites stored in the StripedHashSet
+    //visitedLinks.printAllWebsites();
+
     return 0;
-} 
+}
