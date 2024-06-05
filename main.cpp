@@ -2,7 +2,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <unordered_set>
 #include <thread>
 #include <functional>
 #include <atomic>
@@ -10,29 +9,25 @@
 #include <gumbo.h>
 #include <mutex>
 #include <chrono>
-
-// Include the concurrent queue implementation here (assuming it's defined elsewhere)
 #include "ConcurrentQueue.h"
+#include "StripedHashSet.h"
 
 std::mutex outputMutex;
-std::unordered_set<std::string> visitedLinks; // To keep track of visited links
-std::atomic<int> processedLinksCount(0); // Atomic counter for processed links
+BaseHashSet visitedLinks(100); // Initialize the striped hash set with a capacity
+std::atomic<int> processedLinksCount(0);
 
-const int maxLinksToProcess = 100; // Maximum number of links to process
+const int maxLinksToProcess = 100;
 
-// Write callback function to store the downloaded data
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* s) {
-    size_t newLength = size * nmemb; // Calculate the size of the new data
+    size_t newLength = size * nmemb;
     try {
-        s->append((char*)contents, newLength); // Append the new data to the string
+        s->append((char*)contents, newLength);
     } catch (std::bad_alloc &e) {
-        // Handle memory allocation failure
         return 0;
     }
-    return newLength; // Return the number of bytes handled
+    return newLength;
 }
 
-// Function to extract links from HTML content using Gumbo
 void extractLinks(const GumboNode* node, std::vector<std::string>& links) {
     if (node->type != GUMBO_NODE_ELEMENT) {
         return;
@@ -54,7 +49,6 @@ void extractLinks(const GumboNode* node, std::vector<std::string>& links) {
     }
 }
 
-// Function to download a web page and extract links
 void downloadAndExtract(const std::string& url, std::vector<std::string>& links, std::string& html) {
     CURL* curl;
     CURLcode res;
@@ -81,28 +75,26 @@ void downloadAndExtract(const std::string& url, std::vector<std::string>& links,
     }
 }
 
-// Function to be run by each thread
 void threadFunction(ConcurrentQueue<std::string>& queue) {
     while (true) {
         if (processedLinksCount >= maxLinksToProcess) {
-            break; // Stop if the maximum number of links has been processed
+            break;
         }
 
         std::string url = queue.pop();
         if (url.empty())
-            break; // Signal to exit thread
+            break;
 
         std::vector<std::string> links;
         std::string html;
 
         downloadAndExtract(url, links, html);
 
-        // Synchronize output to avoid concurrent write issues
         {
             std::lock_guard<std::mutex> lock(outputMutex);
-
             // Save the HTML content to html.txt
-            /*std::ofstream htmlFile("html.txt", std::ios::app);
+            /*
+            std::ofstream htmlFile("html.txt", std::ios::app);
             if (htmlFile.is_open()) {
                 htmlFile << "URL: " << url << "\n";
                 htmlFile << html << "\n\n";
@@ -110,10 +102,12 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
                 std::cout << "HTML content has been saved to html.txt" << std::endl;
             } else {
                 std::cerr << "Unable to open file html.txt for writing" << std::endl;
-            }*/
+            }
+            */
 
             // Save the extracted links to links.txt
-            /*std::ofstream outFile("links.txt", std::ios::app);
+            /*
+            std::ofstream outFile("links.txt", std::ios::app);
             if (outFile.is_open()) {
                 for (const auto& link : links) {
                     outFile << link << std::endl;
@@ -122,21 +116,20 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
                 std::cout << "Links have been saved to links.txt" << std::endl;
             } else {
                 std::cerr << "Unable to open file links.txt for writing" << std::endl;
-            }*/
+            }
+            */
         }
 
-        // Increment the processed links counter
         processedLinksCount++;
 
-        // Add new links to the queue
         for (const auto& link : links) {
             if (processedLinksCount >= maxLinksToProcess) {
-                break; // Stop adding new links if the maximum has been reached
+                break;
             }
 
             std::lock_guard<std::mutex> lock(outputMutex);
-            if (visitedLinks.find(link) == visitedLinks.end()) {
-                visitedLinks.insert(link);
+            if (!visitedLinks.contains(Website(link))) {
+                visitedLinks.add(Website(link));
                 queue.push(link);
             }
         }
@@ -144,21 +137,19 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
 }
 
 int main() {
-    const int numThreads = 12; // You can vary this value to see the impact
+    const int numThreads = 12;
     ConcurrentQueue<std::string> queue;
 
     std::string initialUrl = "https://balls.com/"; // Replace with the desired initial URL
-    visitedLinks.insert(initialUrl);
+    visitedLinks.add(Website(initialUrl));
     queue.push(initialUrl);
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    // Create threads
     std::vector<std::thread> threads;
     for (int i = 0; i < numThreads; ++i)
         threads.push_back(std::thread(threadFunction, std::ref(queue)));
 
-    // Join threads
     for (auto& thread : threads)
         thread.join();
 
@@ -167,4 +158,4 @@ int main() {
     std::cout << "Time taken with " << numThreads << " threads: " << elapsed.count() << " seconds" << std::endl;
 
     return 0;
-}
+} 
