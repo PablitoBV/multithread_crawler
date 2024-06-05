@@ -37,7 +37,7 @@ void extractLinks(const GumboNode* node, std::vector<std::string>& links) {
         GumboAttribute* href = gumbo_get_attribute(&node->v.element.attributes, "href");
         if (href) {
             std::string link = href->value;
-            if (link.find("https://") == 0 && link.find("wikipedia") != std::string::npos) {
+            if (link.find("https://") == 0) {
                 links.push_back(link);
                 std::cout << "Extracted link: " << link << std::endl; // Debug print
             }
@@ -85,6 +85,7 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
 
         std::string url = queue.pop();
         if (url.empty()) {
+            std::cout << "Received empty URL, breaking out of the loop." << std::endl; // Debug print
             break;
         }
 
@@ -104,6 +105,7 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
 
         for (const auto& link : links) {
             if (processedLinksCount >= maxLinksToProcess) {
+                std::cout << "Max links to process reached, breaking out of the loop." << std::endl; // Debug print
                 break;
             }
 
@@ -112,6 +114,8 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
                 visitedLinks.add(Website(link));
                 queue.push(link);
                 std::cout << "Added to queue: " << link << std::endl; // Debug print
+            } else {
+                std::cout << "Skipped already visited or empty link: " << link << std::endl; // Debug print
             }
         }
     }
@@ -135,18 +139,20 @@ int main(int argc, char* argv[]) {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < numThreads; ++i)
+    for (int i = 0; i < numThreads; ++i) {
         threads.push_back(std::thread(threadFunction, std::ref(queue)));
+    }
 
-    for (auto& thread : threads)
+    for (auto& thread : threads) {
         thread.join();
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken with " << numThreads << " threads: " << elapsed.count() << " seconds" << std::endl;
 
     // Print all websites stored in the StripedHashSet
-    //visitedLinks.printAllWebsites();
+   //visitedLinks.printAllWebsites();
 
     return 0;
 }
