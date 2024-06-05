@@ -39,7 +39,7 @@ void extractLinks(const GumboNode* node, std::vector<std::string>& links) {
             std::string link = href->value;
             if (link.find("https://") == 0) {
                 links.push_back(link);
-                std::cout << "Extracted link: " << link << std::endl; // Debug print
+                //std::cout << "Extracted link: " << link << std::endl; // Debug print
             }
         }
     }
@@ -92,7 +92,7 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
         std::vector<std::string> links;
         std::string html;
 
-        std::cout << "Processing URL: " << url << std::endl; // Debug print
+        //std::cout << "Processing URL: " << url << std::endl; // Debug print
 
         downloadAndExtract(url, links, html);
 
@@ -113,9 +113,9 @@ void threadFunction(ConcurrentQueue<std::string>& queue) {
             if (!visitedLinks.contains(Website(link)) && !link.empty()) {
                 visitedLinks.add(Website(link));
                 queue.push(link);
-                std::cout << "Added to queue: " << link << std::endl; // Debug print
+                //std::cout << "Added to queue: " << link << std::endl; // Debug print
             } else {
-                std::cout << "Skipped already visited or empty link: " << link << std::endl; // Debug print
+                //std::cout << "Skipped already visited or empty link: " << link << std::endl; // Debug print
             }
         }
     }
