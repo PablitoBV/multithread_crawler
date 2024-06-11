@@ -18,7 +18,7 @@ This project is a multi-threaded web crawler. It uses `libcurl` for downloading 
 - **StripedHashSet.h**: Header file for thread-safe hash set implementation.
 - **Makefile**: Build configuration for the project.
 - **run_simple.sh**: Shell script to run main.
-- **TESTING**: Data and 
+- **Graphing**: Raw data and Python graphing code.  
 - **Execute**: Additional Shell scripts for testing. 
 
 ## Execution
@@ -34,15 +34,12 @@ $ make
 ### Running the Web Crawler
 
 To run the web crawler, execute the compiled binary with the required arguments:
-
 $ ./web <NUMBER_OF_THREADS> <MAX_LINKS_TO_PROCESS> <OUTPUT_CSV_FILE>
 
 For example, to run the crawler with 4 threads and process up to 100 links, saving results to crawler_results.csv:
-
 $ ./web 4 100 crawler_results.csv
 
 Or, use a shell script, such as:
-
 $ ./run_simple.sh 
 
 ## Notes
