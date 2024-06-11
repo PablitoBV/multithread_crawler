@@ -1,4 +1,4 @@
-# Web Crawler Project
+# CSE305 - Web Crawler Project
 
 ## Overview
 
@@ -34,12 +34,15 @@ $ make
 ### Running the Web Crawler
 
 To run the web crawler, execute the compiled binary with the required arguments:
+
 $ ./web <NUMBER_OF_THREADS> <MAX_LINKS_TO_PROCESS> <OUTPUT_CSV_FILE>
 
 For example, to run the crawler with 4 threads and process up to 100 links, saving results to crawler_results.csv:
+
 $ ./web 4 100 crawler_results.csv
 
 Or, use a shell script, such as:
+
 $ ./run_simple.sh 
 
 ## Notes
