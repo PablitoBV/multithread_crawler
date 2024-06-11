@@ -13,6 +13,6 @@ MAX_LINKS_TO_PROCESS=$2
 # Run make clean, make, and execute the web crawler
 make clean
 make
-./web "$NUMBER_OF_THREADS" "$MAX_LINKS_TO_PROCESS"
+./web "$NUMBER_OF_THREADS" "$MAX_LINKS_TO_PROCESS" "crawler_results.csv"
 
 

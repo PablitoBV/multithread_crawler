@@ -2,15 +2,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Load the data
-data = pd.read_csv('crawler_results_1-26_500.csv')
+data = pd.read_csv('crawler_results_links.csv')
 
 # Create the plot
 plt.figure(figsize=(10, 6))
-plt.plot(data['Threads'], data['AverageExecutionTime'], marker='o', linestyle='-', color='b')
+plt.plot(data['Links'], data['AverageExecutionTime'], marker='o', linestyle='-', color='b')
 
 # Title and labels
-plt.title('Web Crawler Performance Over Thread Count to Crawl 500 Links')
-plt.xlabel('Number of Threads')
+plt.title('Web Crawler Performance with 24 Threads')
+plt.xlabel('Number of Links')
 plt.ylabel('Average Execution Time (seconds)')
 
 # Grid for better readability
